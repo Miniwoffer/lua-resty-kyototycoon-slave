@@ -10,6 +10,7 @@ local floor = math.floor
 local sub = string.sub
 local band = bit.band
 local lshift = bit.lshift
+local worker_exiting = ngx.worker.exiting
 
 local BMREPLICATION = char(0xb1)
 local BMNOP = char(0xb0)
@@ -165,7 +166,7 @@ function _M:replicate(callback, ts)
 			end
 		end
 
-		while true do
+		while not worker_exiting() do
 			local magic, err = sock:receive(1)
 			if not magic then
 				return nil, err
@@ -201,7 +202,7 @@ function _M:replicate(callback, ts)
 			end
 
 			local sidp, dbidp, op = b2i(data, 2), b2i(data, 2, 2), byte(data, 5)
-			
+
 			local parser = OP[op]
 
 			if not parser then
@@ -213,6 +214,7 @@ function _M:replicate(callback, ts)
 			local cmd = {}
 			callback(parser(data, size, cmd))
 		end
+		return nil, "exiting"
 	end
 
 	while true do
@@ -223,6 +225,9 @@ function _M:replicate(callback, ts)
 		end
 
 		if not ok then
+			if err == "exiting" then
+				return
+			end
 			ngx.log(ngx.ERR, err)
 		end
 
