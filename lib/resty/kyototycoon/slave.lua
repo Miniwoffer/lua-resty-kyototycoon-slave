@@ -12,6 +12,8 @@ local band = bit.band
 local lshift = bit.lshift
 local worker_exiting = ngx.worker.exiting
 
+local worker_exiting = ngx.worker_exiting
+
 local BMREPLICATION = char(0xb1)
 local BMNOP = char(0xb0)
 
@@ -211,7 +213,8 @@ function _M:replicate(callback, ts)
 				return nil, "invalid update log"
 			end
 		end
-		return nil, "exiting"
+		-- worker is exiting
+		return ngx.exit(ngx.OK)
 	end
 
 	while true do
